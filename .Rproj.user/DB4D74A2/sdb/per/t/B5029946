@@ -1,0 +1,20 @@
+{
+    "collab_server" : "",
+    "contents" : "library(shiny)\n\n# UI\nfluidPage(\n  tags$head(tags$style(\"\n                  #container * {  \n                       display: inline;\n                       }\")),\n\n  # Application title\n  titlePanel(\"Download Wallet Transactions!\"),\n\n  # Sidebar \n  sidebarLayout(\n    sidebarPanel(\n      \n      img(src='EVE_SSO_Login_Buttons_Small_White.png', align = \"left\", onclick=\"location.href='https://login.eveonline.com/oauth/authorize?response_type=code&redirect_uri=http://localhost:4355&client_id=6bc0906a89d449a8b7022ade05770c66&scope=esi-wallet.read_character_wallet.v1'\"),\n      tags$br(),\n      tags$br(),\n      downloadButton(\"downloadData\", \"Export to CSV (legacy)\"),\n      downloadButton(\"downloadSlim\", \"Export to CSV (new)\"),\n      checkboxInput(\"headers\", \"Include headers\", FALSE),\n      \n      \n      tags$hr(),\n      htmlOutput(\"portrait\"),\n      div(id=\"container\", tags$b(\"Name: \"), textOutput(\"characterName\")),\n      div(id=\"container\", tags$b(\"ID: \"), textOutput(\"charID\")),\n      div(id=\"container\", tags$b(\"Refresh token: \"), textOutput(\"refreshToken\"))\n    ),\n\n    # Show a plot of the generated distribution\n    mainPanel(\n      tabsetPanel(\n        tabPanel(\"General Plots\", plotOutput(\"distPlot\"),  sliderInput(\"topX\", \"Move visible transactions:\",\n           min = 0, max = 100, value = 0\n        ), plotOutput(\"timeline\")),\n        tabPanel(\"Table\", tableOutput(\"table\")),\n        tabPanel(\"Skill trading\", plotOutput(\"skilltradingPlot\"), plotOutput(\"skillTradingNet\")),\n        tabPanel(\"Arbitrage\", plotOutput(\"arbitrage\"), uiOutput(\"dropdown\"), textOutput(\"tradenet\"))\n      )\n      \n    )\n  )\n)\n",
+    "created" : 1519488091391.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "19859898",
+    "id" : "B5029946",
+    "lastKnownWriteTime" : 1520630714,
+    "last_content_update" : 1520630714320,
+    "path" : "D:/R-workspace/REVE/wallet_transactions_dl/ui.R",
+    "project_path" : "ui.R",
+    "properties" : {
+    },
+    "relative_order" : 2,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}

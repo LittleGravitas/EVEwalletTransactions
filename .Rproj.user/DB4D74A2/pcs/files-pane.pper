@@ -1,0 +1,9 @@
+{
+    "path" : "D:/R-workspace/REVE/wallet_transactions_dl",
+    "sortOrder" : [
+        {
+            "ascending" : true,
+            "columnIndex" : 2
+        }
+    ]
+}
