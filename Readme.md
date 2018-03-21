@@ -1,7 +1,8 @@
 ##########Download your EVE wallet transaction data and export as CSV. Look at some cute graphs while your at it.
+##########This has to be run locally. You will need to have RStudio installed: https://www.rstudio.com
 
 ##To start the app, 
-1) double click "wallet_transactions_dl.Rproj"
+1) double click "wallet_transactions_dl.Rproj", or open RStudio and open the project if you don't have the file association activated
 2) enter these 2 commands in the RStudio Console at the bottom of the window:
 
 library(shiny)
