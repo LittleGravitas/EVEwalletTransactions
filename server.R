@@ -3,7 +3,7 @@
 # To start the app, you have to enter these 2 commands in the Console below:
 #
 # library(shiny)
-# runApp(appDir = getwd(), port = 4355, launch.browser = T, host = getOption("shiny.host", "127.0.0.1"), display.mode = "normal")
+# runApp(appDir = getwd(), port = 4355, launch.browser = F, host = getOption("shiny.host", "127.0.0.1"), display.mode = "normal")
 #
 # If you run it instead with the "Run App" button, the port will be randomly assigned and the CCP auth server cannot send your credentials back to right address.
 # If your browser does not open automatically, type in this address: http://127.0.0.1:4355
@@ -16,6 +16,8 @@ library("rjson")
 library(data.table)
 library(sqldf)
 library(ggplot2)
+library(openssl)
+source("config.R")
 
 options(scipen = 999)
 
@@ -26,7 +28,7 @@ function(input, output, session) {
     loginCode <- toJSON(loginCode)
     buildPostBody <- paste('{"grant_type": "authorization_code","code":', loginCode, '}')
     r <- POST("https://login.eveonline.com/oauth/token", body = buildPostBody,
-              add_headers(Authorization="Basic NmJjMDkwNmE4OWQ0NDlhOGI3MDIyYWRlMDU3NzBjNjY6YU81am9LN0ZFWjVRbFB2RW1CbUkzb1oxeW5DWXl6OXB0UGxhUm5EcA==", `Content-Type`="application/json"))
+              add_headers(Authorization=paste(c("Basic ", base64_encode(charToRaw(paste(c(appClient_ID,":", appSecret), collapse = "")))), collapse = ""), `Content-Type`="application/json"))
     stop_for_status(r)
     rtojson <- content(r, "parsed", "application/json")
     
@@ -41,7 +43,7 @@ function(input, output, session) {
   getTokenFromRefresh <- function(refreshcode){
     buildPostBody <- paste('{"grant_type": "refresh_token","refresh_token":', refreshcode, '}')
     r <- POST("https://login.eveonline.com/oauth/token", body = buildPostBody,
-              add_headers(Authorization="Basic NmJjMDkwNmE4OWQ0NDlhOGI3MDIyYWRlMDU3NzBjNjY6YU81am9LN0ZFWjVRbFB2RW1CbUkzb1oxeW5DWXl6OXB0UGxhUm5EcA==", `Content-Type`="application/json"))
+              add_headers(Authorization=paste(c("Basic ", base64_encode(charToRaw(paste(c(appClient_ID,":", appSecret), collapse = "")))), collapse = ""), `Content-Type`="application/json"))
     stop_for_status(r)
     rtojson <- content(r, "parsed", "application/json")
     
@@ -154,7 +156,7 @@ function(input, output, session) {
       
       csvtable <- rbindlist(WalletTransactions, fill=T)
       
-      invTable <- read.csv2(file=file.path("www", "invTypes"), header=TRUE, sep=",", dec=".", stringsAsFactors=FALSE)
+      invTable <- read.csv2(file=file.path("www", "invTypes.csv"), header=TRUE, sep=",", dec=".", stringsAsFactors=FALSE)
       
       joinedCSVtables <- sqldf('SELECT csvtable.date, csvtable.transaction_id, csvtable.quantity, "typeName", csvtable.type_id, csvtable.unit_price, csvtable.client_id, "client_name", csvtable.location_id, "stationName", csvtable.is_buy, csvtable.is_personal, csvtable.journal_ref_id FROM csvtable INNER JOIN invTable ON csvtable.type_id="typeID"')
       oldFormatDL <- rewriteSellBuyEntries(joinedCSVtables)
@@ -164,7 +166,7 @@ function(input, output, session) {
       characterObj <- list(transactRich = joinedCSVtables, transactSlim = csvtable, transactOld = oldFormatDL, ID = CharacterID, name = CharacterName, portrait=CharacterImage, refreshToken = refreshcode)
       
     }else{
-      joinedCSVtables <- read.csv2(file=file.path("www", "bigtestsheet"), header=TRUE, sep=",", dec=".", stringsAsFactors=FALSE)
+      joinedCSVtables <- read.csv2(file=file.path("www", "bigtestsheet.csv"), header=TRUE, sep=",", dec=".", stringsAsFactors=FALSE)
       CharacterID = 7777
       CharacterName = "Sample Capsuleer"
       refreshcode = "77iSk77ok77isTruth"

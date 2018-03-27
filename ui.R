@@ -14,7 +14,7 @@ fluidPage(
   sidebarLayout(
     sidebarPanel(
       
-      img(src='EVE_SSO_Login_Buttons_Small_White.png', align = "left", onclick="location.href='https://login.eveonline.com/oauth/authorize?response_type=code&redirect_uri=http://localhost:4355&client_id=6bc0906a89d449a8b7022ade05770c66&scope=esi-wallet.read_character_wallet.v1'"),
+      img(src="EVE_SSO_Login_Buttons_Small_White.png", align = "left", onclick=paste(c("location.href='https://login.eveonline.com/oauth/authorize?response_type=code&redirect_uri=", cbURL, "&client_id=", appClient_ID,"&scope=esi-wallet.read_character_wallet.v1'"), collapse="")),
       tags$br(),
       tags$br(),
       downloadButton("downloadData", "Export to CSV (legacy)"),

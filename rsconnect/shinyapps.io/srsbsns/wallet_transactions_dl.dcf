@@ -1,0 +1,12 @@
+name: wallet_transactions_dl
+title: wallet_transactions_dl
+username:
+account: srsbsns
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 307378
+bundleId: 1286956
+url: https://srsbsns.shinyapps.io/wallet_transactions_dl/
+when: 1521985475.12592
+asMultiple: FALSE
+asStatic: FALSE
