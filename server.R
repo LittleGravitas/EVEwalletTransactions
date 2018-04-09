@@ -18,6 +18,8 @@ library(sqldf)
 library(ggplot2)
 library(openssl)
 source("config.R")
+source("dark_spaceTheme.R")
+theme_set(theme_space())
 
 options(scipen = 999)
 
@@ -216,6 +218,12 @@ function(input, output, session) {
                  selectize=FALSE
   )})
   
+  output$slider = renderUI({
+    sliderInput("topX", "Move visible transactions:",
+                min = 0, max = length(unique(characterObj()[["transactRich"]][["typeName"]])), value = 0
+    )
+  })
+  
 
   # character Name
   output$characterName <- renderText({
@@ -245,11 +253,16 @@ function(input, output, session) {
     pred <- data.frame(price,itemNames)
     data <- aggregate(price ~., data = pred, sum)
     
+    data$colour <- ifelse(data$price < 0, "negative","positive")
+    
     ggplot(data)+aes(x= reorder(itemNames,-price), price, label=format(price, big.mark=","))+
-      geom_bar(stat="identity", position="dodge")+
+      geom_bar(stat="identity", position="dodge",aes(fill = colour))+
+      scale_fill_manual(values=c(positive="#2A9FD6",negative="#DF691A"))+
+      scale_y_continuous(labels = function(x) format(x, big.mark=","))+
       geom_label()+
       coord_cartesian(xlim=c(input$topX, input$topX+5))+
-      labs(x="Item", y="ISK")
+      labs(x="Item", y="ISK")+ 
+      ggtitle("ISK value per item type")
     
     
   })
@@ -259,10 +272,13 @@ function(input, output, session) {
     reformatDates <- strptime(characterObj()[["transactRich"]][["date"]], format="%Y-%m-%dT%H:%M:%SZ")
     tbl$hour <- reformatDates$hour
     
-    ggplot(tbl)+aes(as.Date(date, format="%Y-%m-%dT%H:%M:%SZ"), unit_price, color=hour, size=unit_price)+
-      geom_point(stat="identity")+
-      scale_color_gradient2(low="blue", high="blue", mid="gold", midpoint=19, guide = "legend", space = "Lab")+
-      labs(x="Date", y="ISK")
+    ggplot(tbl)+aes(as.Date(date, format="%Y-%m-%dT%H:%M:%SZ"), unit_price, color=hour)+
+      geom_point(stat="identity", size=5)+
+      scale_y_continuous(labels = function(x) format(x, big.mark=","))+
+      scale_color_gradient2(low="#2A9FD6", high="#2A9FD6", mid="#DF691A", midpoint=19, guide = "legend", space = "Lab")+
+      labs(x="Date", y="ISK")+ 
+      ggtitle("Trade value by date and time")
+      
   })
   
   output$skilltradingPlot <- renderPlot({
@@ -273,9 +289,11 @@ function(input, output, session) {
     subtbl$factored <- subtbl[["unit_price"]] * subtbl[["is_buy"]]
     
     
-    ggplot(subtbl, aes(as.Date(date, format="%Y-%m-%dT%H:%M:%SZ"), factored, colour = typeName))+
-      geom_line()+
-      geom_point()+
+    ggplot(subtbl, aes(as.Date(date, format="%Y-%m-%dT%H:%M:%SZ"), factored))+
+      geom_line(aes(colour = typeName))+
+      geom_point(aes(colour = typeName))+
+      scale_y_continuous(labels = function(x) format(x, big.mark=","))+
+      scale_colour_manual(values=c("#2A9FD6","#DF691A","#07f251","#f207ee"))+
       labs(x="Date", y="ISK")
   })
   
@@ -295,8 +313,10 @@ function(input, output, session) {
     
     ggplot(netdf, aes(x= legend, y=netValues, label=format(netValues, big.mark=",")))+
       geom_bar(stat="identity", aes(fill=legend))+
-      geom_label()
-    
+      geom_label()+
+      scale_y_continuous(labels = function(x) format(x, big.mark=","))+
+      scale_fill_manual(values=c("#2A9FD6","#DF691A"))+
+      labs(x="", y="ISK")
   })
   
   output$arbitrage <- renderPlot({
@@ -310,7 +330,9 @@ function(input, output, session) {
     ggplot(focussedItemSell, aes(as.Date(date, format="%Y-%m-%dT%H:%M:%SZ"), unit_price))+
       geom_point(colour="green")+
       geom_point(data=focussedItemBuy, aes(as.Date(date, format="%Y-%m-%dT%H:%M:%SZ"), unit_price), colour="red")+
-      geom_smooth(method = "lm", formula = y ~ splines::bs(x, 3), se = FALSE)
+      geom_smooth(method = "lm", formula = y ~ splines::bs(x, 3), se = FALSE)+
+      scale_y_continuous(labels = function(x) format(x, big.mark=","))+
+      labs(x="Date", y="ISK")
       
   })
   

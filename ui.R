@@ -1,7 +1,8 @@
 library(shiny)
+source("config.R")
 
 # UI
-fluidPage(
+fluidPage(theme = "bootstrap.css",
   tags$head(tags$style("
                   #container * {  
                        display: inline;
@@ -32,12 +33,11 @@ fluidPage(
     # Show a plot of the generated distribution
     mainPanel(
       tabsetPanel(
-        tabPanel("General Plots", plotOutput("distPlot"),  sliderInput("topX", "Move visible transactions:",
-           min = 0, max = 100, value = 0
-        ), plotOutput("timeline")),
+        tabPanel("General Plots", plotOutput("distPlot"), uiOutput("slider"), plotOutput("timeline")),
         tabPanel("Table", tableOutput("table")),
         tabPanel("Skill trading", plotOutput("skilltradingPlot"), plotOutput("skillTradingNet")),
-        tabPanel("Arbitrage", plotOutput("arbitrage"), uiOutput("dropdown"), textOutput("tradenet"))
+        tabPanel("Arbitrage", plotOutput("arbitrage"), uiOutput("dropdown"), textOutput("tradenet")),
+        tabPanel("About", includeHTML("about.html"))
       )
       
     )
