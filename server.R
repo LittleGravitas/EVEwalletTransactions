@@ -60,17 +60,25 @@ function(input, output, session) {
   
   
   getCharacterID <- function(buildAuthcode){
-    charInfoRequest <- GET("https://login.eveonline.com/oauth/verify", add_headers(Authorization = buildAuthcode))
-    stop_for_status(charInfoRequest)
-    charInfoParsed <- content(charInfoRequest, "parsed", "application/json")
+    charInfoRequest <- tryCatch({
+    getRequest<-GET("https://esi.tech.ccp.is/verify/", add_headers(Authorization = buildAuthcode))
+    stop_for_status(getRequest)
+    charInfoParsed <- content(getRequest, "parsed", "application/json")
     charID <- charInfoParsed$CharacterID
-    return(charID)
+    charID
+    },
+    error = function (e){
+      charID = "error: failed to identify with login server"
+      return(charID)
+    } 
+    )
+    return(charInfoRequest)
   }
   
   getCharacterName <- function(charID){
-    receivedName <- GET("https://esi.tech.ccp.is", path=paste0("/latest/characters/names/?character_ids=",charID,"&datasource=tranquility", collapse=""))
+    receivedName <- GET("https://esi.evetech.net", path=paste0("/latest/characters/",charID,"/?datasource=tranquility", collapse=""))
     namefromresponse <- content(receivedName, "parsed", "application/json")
-    return(namefromresponse[[1]][['character_name']])
+    return(namefromresponse[['name']])
   }
   
   getCharacterImage <- function(charID){
