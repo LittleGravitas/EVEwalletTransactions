@@ -15,11 +15,12 @@ fluidPage(theme = "bootstrap.css",
   sidebarLayout(
     sidebarPanel(
       
-      img(src="EVE_SSO_Login_Buttons_Small_White.png", align = "left", onclick=paste(c("location.href='https://login.eveonline.com/oauth/authorize?response_type=code&redirect_uri=", cbURL, "&client_id=", appClient_ID,"&scope=esi-wallet.read_character_wallet.v1'"), collapse="")),
+      img(src="EVE_SSO_Login_Buttons_Small_White.png", align = "left", onclick=paste(c("location.href='https://login.eveonline.com/oauth/authorize?response_type=code&redirect_uri=", cbURL, "&client_id=", appClient_ID,"&scope=esi-wallet.read_character_wallet.v1 esi-contracts.read_character_contracts.v1'"), collapse="")),
       tags$br(),
       tags$br(),
       downloadButton("downloadData", "Export to CSV (legacy)"),
       downloadButton("downloadSlim", "Export to CSV (new)"),
+      downloadButton("downloadContracts", "Export to CSV (Contracts)"),
       checkboxInput("headers", "Include headers", FALSE),
       
       

@@ -97,6 +97,35 @@ function(input, output, session) {
     
   }
   
+  getWalletJournal <- function(buildAuthcode, CharacterID){
+    requestPath <- paste(c("latest/characters/", CharacterID, "/wallet/journal/"), collapse = "")
+    walletJournalRequest <- GET("https://esi.tech.ccp.is", path=requestPath, add_headers(Authorization = buildAuthcode))
+    stop_for_status(walletJournalRequest)
+    walletJournal <- content(walletJournalRequest, "parsed", "application/json")
+    
+    return(walletJournal)
+    
+  }
+  
+  getContracts <- function(buildAuthcode, CharacterID){
+    requestPath <- paste(c("latest/characters/", CharacterID, "/contracts/"), collapse = "")
+    contractRequest <- GET("https://esi.tech.ccp.is", path=requestPath, add_headers(Authorization = buildAuthcode))
+    stop_for_status(contractRequest)
+    contracts <- content(contractRequest, "parsed", "application/json")
+    
+    return(contracts)
+    
+  }
+  
+  getItemsFromContracts <- function(buildAuthcode, CharacterID, contractID) {
+    requestPath <- paste(c("latest/characters/", CharacterID, "/contracts/", contractID, "/items/"), collapse = "")
+    itemRequest <- GET("https://esi.tech.ccp.is", path=requestPath, add_headers(Authorization = buildAuthcode))
+    stop_for_status(itemRequest)
+    items <- content(itemRequest, "parsed", "application/json")
+    
+    return(items)
+  }
+  
   
     
   
@@ -124,6 +153,39 @@ function(input, output, session) {
     tbl$is_buy[tbl$is_buy == FALSE] <- "sell"
     
     return(tbl)
+  }
+  
+  extractPublicContracts <- function(contractscsvtable) {
+    #contractsDataFrame <- read.csv(contractscsvtable, header=TRUE, sep=",", dec=".", stringsAsFactors=FALSE)
+    contractsDataFrame <- contractscsvtable
+    contractsDataFrame <- contractsDataFrame[(contractsDataFrame$availability=="public" & contractsDataFrame$status=="finished"),]
+    return(contractsDataFrame)
+  }
+  
+  resolveContractItems <- function(TokenNew, CharacterID, publicContracts) {
+    buildAuthcode <- TokenNew$buildAuthcode
+    refreshcode <- TokenNew$refreshcode
+    
+    for (i in 1:nrow(publicContracts)) {
+      tempRestponse <- getItemsFromContracts(buildAuthcode, CharacterID, publicContracts[i, "contract_id"])
+      tempList <- rbindlist(tempRestponse, fill = T)
+      
+      if (tempRestponse[[1]]$quantity == 1) {
+        publicContracts[i,"item_id"] <- tempList$type_id
+      } else {
+        publicContracts[i,"item_id"] <- 0
+      }
+      
+      #prepare new token
+      TokenNew <- getTokenFromRefresh(refreshcode)
+      authcode <- TokenNew$authcode
+      refreshcode <- TokenNew$refreshcode
+      buildAuthcode <- TokenNew$buildAuthcode
+    }
+    
+    return(list(publicContracts, TokenNew))
+    
+    #joinedContractsItems <- sqldf('SELECT csvtable.date, csvtable.transaction_id, csvtable.quantity, "typeName", csvtable.type_id, csvtable.unit_price, csvtable.client_id, "client_name", csvtable.location_id, "stationName", csvtable.is_buy, csvtable.is_personal, csvtable.journal_ref_id FROM csvtable INNER JOIN invTable ON csvtable.type_id="typeID"')
   }
 
   
@@ -164,7 +226,19 @@ function(input, output, session) {
       refreshcode <- TokenNew$refreshcode
       buildAuthcode <- TokenNew$buildAuthcode
       
+      #use token to call contracts
+      Contracts <- getContracts(buildAuthcode, CharacterID)
+      
+      #prepare new token
+      TokenNew <- getTokenFromRefresh(refreshcode)
+      authcode <- TokenNew$authcode
+      refreshcode <- TokenNew$refreshcode
+      buildAuthcode <- TokenNew$buildAuthcode
+      
       csvtable <- rbindlist(WalletTransactions, fill=T)
+      
+      contractscsvtable <- rbindlist(Contracts, fill=T)
+      publicContracts <- extractPublicContracts(contractscsvtable)
       
       invTable <- read.csv2(file=file.path("www", "invTypes.csv"), header=TRUE, sep=",", dec=".", stringsAsFactors=FALSE)
       
@@ -173,7 +247,31 @@ function(input, output, session) {
       oldFormatDL$date <- gsub("T", " ", oldFormatDL$date)
       oldFormatDL$date <- gsub("Z", "", oldFormatDL$date)
       
-      characterObj <- list(transactRich = joinedCSVtables, transactSlim = csvtable, transactOld = oldFormatDL, ID = CharacterID, name = CharacterName, portrait=CharacterImage, refreshToken = refreshcode)
+      if (nrow(publicContracts) != 0) {
+        getItems <- resolveContractItems(TokenNew, CharacterID, publicContracts)
+        publicContractsItems <- getItems[[1]]
+        
+        #prepare new token
+        TokenNew <- getItems[[2]]
+        authcode <- TokenNew$authcode
+        refreshcode <- TokenNew$refreshcode
+        buildAuthcode <- TokenNew$buildAuthcode
+      
+        joinedContractItems <- sqldf('SELECT publicContractsItems.acceptor_id, publicContractsItems.assignee_id, publicContractsItems.availability, publicContractsItems.collateral, publicContractsItems.contract_id, publicContractsItems.date_accepted, publicContractsItems.date_completed, publicContractsItems.date_expired, publicContractsItems.date_issued, publicContractsItems.days_to_complete, publicContractsItems.end_location_id, publicContractsItems.for_corporation, publicContractsItems.issuer_corporation_id, publicContractsItems.issuer_id, publicContractsItems.price, publicContractsItems.reward, publicContractsItems.start_location_id, publicContractsItems.status, publicContractsItems.title, publicContractsItems.type, publicContractsItems.volume, publicContractsItems.item_id, "typeName" FROM publicContractsItems INNER JOIN invTable ON publicContractsItems.item_id="typeID"')
+        joinedContractItems$date_completed <- gsub("T", " ", joinedContractItems$date_completed)
+        joinedContractItems$date_completed <- gsub("Z", "", joinedContractItems$date_completed)
+        
+        if (sum(joinedContractItems$item_id) > 0) {
+          joinedContractItems <- joinedContractItems[(joinedContractItems$item_id!=0),]
+        } else {
+          joinedContractItems <- "cannot resolve only multi item contracts"
+        }
+        
+      } else {
+        joinedContractItems = "no public contracts"
+      }
+      
+      characterObj <- list(transactRich = joinedCSVtables, transactSlim = csvtable, transactOld = oldFormatDL, contractsSlim = joinedContractItems, ID = CharacterID, name = CharacterName, portrait=CharacterImage, refreshToken = refreshcode)
       
     }else{
       joinedCSVtables <- read.csv2(file=file.path("www", "bigtestsheet.csv"), header=TRUE, sep=",", dec=".", stringsAsFactors=FALSE)
@@ -181,7 +279,7 @@ function(input, output, session) {
       CharacterName = "Sample Capsuleer"
       refreshcode = "77iSk77ok77isTruth"
       silhouette = "https://image.eveonline.com/Character/1_64.jpg"
-      characterObj <- list(transactRich = joinedCSVtables, transactSlim = "", transactOld = joinedCSVtables, ID = CharacterID, name = CharacterName, portrait=silhouette, refreshToken = refreshcode)
+      characterObj <- list(transactRich = joinedCSVtables, transactSlim = "", transactOld = joinedCSVtables, contractsSlim = "", ID = CharacterID, name = CharacterName, portrait=silhouette, refreshToken = refreshcode)
     }
     return(characterObj)
   }
@@ -212,6 +310,16 @@ function(input, output, session) {
     },
     content = function(file) {
       write.table(characterObj()[["transactSlim"]], file, sep=",", col.names=input$headers, row.names=F)
+    }
+  )
+  
+  #contracts
+  output$downloadContracts <- downloadHandler(
+    filename = function() {
+      paste(input$dataset, ".csv", sep = "")
+    },
+    content = function(file) {
+      write.table(characterObj()[["contractsSlim"]], file, sep=",", col.names=input$headers, row.names=F)
     }
   )
   
