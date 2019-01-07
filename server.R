@@ -61,7 +61,7 @@ function(input, output, session) {
   
   getCharacterID <- function(buildAuthcode){
     charInfoRequest <- tryCatch({
-    getRequest<-GET("https://esi.tech.ccp.is/verify/", add_headers(Authorization = buildAuthcode))
+    getRequest<-GET("https://esi.evetech.net/verify/", add_headers(Authorization = buildAuthcode))
     stop_for_status(getRequest)
     charInfoParsed <- content(getRequest, "parsed", "application/json")
     charID <- charInfoParsed$CharacterID
@@ -82,14 +82,14 @@ function(input, output, session) {
   }
   
   getCharacterImage <- function(charID){
-    receivedPaths <- GET("https://esi.tech.ccp.is", path=paste0("/latest/characters/",charID,"/portrait/?datasource=tranquility", collapse=""))
+    receivedPaths <- GET("https://esi.evetech.net", path=paste0("/latest/characters/",charID,"/portrait/?datasource=tranquility", collapse=""))
     pathsfromresponse <- content(receivedPaths, "parsed", "application/json")
     return(pathsfromresponse[["px64x64"]])
   }
   
   getWalletTransactions <- function(buildAuthcode, CharacterID){
     requestPath <- paste(c("latest/characters/", CharacterID, "/wallet/transactions/"), collapse = "")
-    walletTransactionsRequest <- GET("https://esi.tech.ccp.is", path=requestPath, add_headers(Authorization = buildAuthcode))
+    walletTransactionsRequest <- GET("https://esi.evetech.net", path=requestPath, add_headers(Authorization = buildAuthcode))
     stop_for_status(walletTransactionsRequest)
     walletTransactions <- content(walletTransactionsRequest, "parsed", "application/json")
     
@@ -99,7 +99,7 @@ function(input, output, session) {
   
   getWalletJournal <- function(buildAuthcode, CharacterID){
     requestPath <- paste(c("latest/characters/", CharacterID, "/wallet/journal/"), collapse = "")
-    walletJournalRequest <- GET("https://esi.tech.ccp.is", path=requestPath, add_headers(Authorization = buildAuthcode))
+    walletJournalRequest <- GET("https://esi.evetech.net", path=requestPath, add_headers(Authorization = buildAuthcode))
     stop_for_status(walletJournalRequest)
     walletJournal <- content(walletJournalRequest, "parsed", "application/json")
     
@@ -109,7 +109,7 @@ function(input, output, session) {
   
   getContracts <- function(buildAuthcode, CharacterID){
     requestPath <- paste(c("latest/characters/", CharacterID, "/contracts/"), collapse = "")
-    contractRequest <- GET("https://esi.tech.ccp.is", path=requestPath, add_headers(Authorization = buildAuthcode))
+    contractRequest <- GET("https://esi.evetech.net", path=requestPath, add_headers(Authorization = buildAuthcode))
     stop_for_status(contractRequest)
     contracts <- content(contractRequest, "parsed", "application/json")
     
@@ -119,7 +119,7 @@ function(input, output, session) {
   
   getItemsFromContracts <- function(buildAuthcode, CharacterID, contractID) {
     requestPath <- paste(c("latest/characters/", CharacterID, "/contracts/", contractID, "/items/"), collapse = "")
-    itemRequest <- GET("https://esi.tech.ccp.is", path=requestPath, add_headers(Authorization = buildAuthcode))
+    itemRequest <- GET("https://esi.evetech.net", path=requestPath, add_headers(Authorization = buildAuthcode))
     stop_for_status(itemRequest)
     items <- content(itemRequest, "parsed", "application/json")
     
