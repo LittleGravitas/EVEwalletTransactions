@@ -9,7 +9,7 @@
 # If your browser does not open automatically, type in this address: http://127.0.0.1:4355
 
 
-
+#import dependencies
 library(shiny)
 library(httr)
 library("rjson")
@@ -21,114 +21,16 @@ source("config.R")
 source("dark_spaceTheme.R")
 theme_set(theme_space())
 
+#import classes
+source("classes/tokenClass.R")
+source("classes/characterClass.R")
+source("classes/walletClass.R")
+source("classes/contractClass.R")
+
 options(scipen = 999)
 
 function(input, output, session) {
 
-
-  getTokenNew <- function(loginCode){
-    loginCode <- toJSON(loginCode)
-    buildPostBody <- paste('{"grant_type": "authorization_code","code":', loginCode, '}')
-    r <- POST("https://login.eveonline.com/oauth/token", body = buildPostBody,
-              add_headers(Authorization=paste(c("Basic ", base64_encode(charToRaw(paste(c(appClient_ID,":", appSecret), collapse = "")))), collapse = ""), `Content-Type`="application/json"))
-    stop_for_status(r)
-    rtojson <- content(r, "parsed", "application/json")
-    
-    authcode <- rtojson$access_token
-    refreshcode <- toJSON(rtojson$refresh_token)
-    buildAuthcode <- paste(c("Bearer", authcode), collapse = " ")
-    returnList <- list("authcode" = authcode, "refreshcode" = refreshcode, "buildAuthcode" = buildAuthcode)
-    return(returnList)
-  
-  }
-  
-  getTokenFromRefresh <- function(refreshcode){
-    buildPostBody <- paste('{"grant_type": "refresh_token","refresh_token":', refreshcode, '}')
-    r <- POST("https://login.eveonline.com/oauth/token", body = buildPostBody,
-              add_headers(Authorization=paste(c("Basic ", base64_encode(charToRaw(paste(c(appClient_ID,":", appSecret), collapse = "")))), collapse = ""), `Content-Type`="application/json"))
-    stop_for_status(r)
-    rtojson <- content(r, "parsed", "application/json")
-    
-    authcode <- rtojson$access_token
-    refreshcode <- toJSON(rtojson$refresh_token)
-    buildAuthcode <- paste(c("Bearer", authcode), collapse = " ")
-    returnList <- list("authcode" = authcode, "refreshcode" = refreshcode, "buildAuthcode" = buildAuthcode)
-    return(returnList)
-    
-  }
-  
-  
-  
-  getCharacterID <- function(buildAuthcode){
-    charInfoRequest <- tryCatch({
-    getRequest<-GET("https://esi.evetech.net/verify/", add_headers(Authorization = buildAuthcode))
-    stop_for_status(getRequest)
-    charInfoParsed <- content(getRequest, "parsed", "application/json")
-    charID <- charInfoParsed$CharacterID
-    charID
-    },
-    error = function (e){
-      charID = "error: failed to identify with login server"
-      return(charID)
-    } 
-    )
-    return(charInfoRequest)
-  }
-  
-  getCharacterName <- function(charID){
-    receivedName <- GET("https://esi.evetech.net", path=paste0("/latest/characters/",charID,"/?datasource=tranquility", collapse=""))
-    namefromresponse <- content(receivedName, "parsed", "application/json")
-    return(namefromresponse[['name']])
-  }
-  
-  getCharacterImage <- function(charID){
-    receivedPaths <- GET("https://esi.evetech.net", path=paste0("/latest/characters/",charID,"/portrait/?datasource=tranquility", collapse=""))
-    pathsfromresponse <- content(receivedPaths, "parsed", "application/json")
-    return(pathsfromresponse[["px64x64"]])
-  }
-  
-  getWalletTransactions <- function(buildAuthcode, CharacterID){
-    requestPath <- paste(c("latest/characters/", CharacterID, "/wallet/transactions/"), collapse = "")
-    walletTransactionsRequest <- GET("https://esi.evetech.net", path=requestPath, add_headers(Authorization = buildAuthcode))
-    stop_for_status(walletTransactionsRequest)
-    walletTransactions <- content(walletTransactionsRequest, "parsed", "application/json")
-    
-    return(walletTransactions)
-    
-  }
-  
-  getWalletJournal <- function(buildAuthcode, CharacterID){
-    requestPath <- paste(c("latest/characters/", CharacterID, "/wallet/journal/"), collapse = "")
-    walletJournalRequest <- GET("https://esi.evetech.net", path=requestPath, add_headers(Authorization = buildAuthcode))
-    stop_for_status(walletJournalRequest)
-    walletJournal <- content(walletJournalRequest, "parsed", "application/json")
-    
-    return(walletJournal)
-    
-  }
-  
-  getContracts <- function(buildAuthcode, CharacterID){
-    requestPath <- paste(c("latest/characters/", CharacterID, "/contracts/"), collapse = "")
-    contractRequest <- GET("https://esi.evetech.net", path=requestPath, add_headers(Authorization = buildAuthcode))
-    stop_for_status(contractRequest)
-    contracts <- content(contractRequest, "parsed", "application/json")
-    
-    return(contracts)
-    
-  }
-  
-  getItemsFromContracts <- function(buildAuthcode, CharacterID, contractID) {
-    requestPath <- paste(c("latest/characters/", CharacterID, "/contracts/", contractID, "/items/"), collapse = "")
-    itemRequest <- GET("https://esi.evetech.net", path=requestPath, add_headers(Authorization = buildAuthcode))
-    stop_for_status(itemRequest)
-    items <- content(itemRequest, "parsed", "application/json")
-    
-    return(items)
-  }
-  
-  
-    
-  
   netfunction <- function(itemType) {
     tbl <- characterObj()[["transactRich"]]
     
@@ -154,49 +56,18 @@ function(input, output, session) {
     
     return(tbl)
   }
-  
-  extractPublicContracts <- function(contractscsvtable) {
-    #contractsDataFrame <- read.csv(contractscsvtable, header=TRUE, sep=",", dec=".", stringsAsFactors=FALSE)
-    contractsDataFrame <- contractscsvtable
-    contractsDataFrame <- contractsDataFrame[(contractsDataFrame$availability=="public" & contractsDataFrame$status=="finished"),]
-    return(contractsDataFrame)
-  }
-  
-  resolveContractItems <- function(TokenNew, CharacterID, publicContracts) {
-    buildAuthcode <- TokenNew$buildAuthcode
-    refreshcode <- TokenNew$refreshcode
-    
-    for (i in 1:nrow(publicContracts)) {
-      tempRestponse <- getItemsFromContracts(buildAuthcode, CharacterID, publicContracts[i, "contract_id"])
-      tempList <- rbindlist(tempRestponse, fill = T)
-      
-      if (tempRestponse[[1]]$quantity == 1) {
-        publicContracts[i,"item_id"] <- tempList$type_id
-      } else {
-        publicContracts[i,"item_id"] <- 0
-      }
-      
-      #prepare new token
-      TokenNew <- getTokenFromRefresh(refreshcode)
-      authcode <- TokenNew$authcode
-      refreshcode <- TokenNew$refreshcode
-      buildAuthcode <- TokenNew$buildAuthcode
-    }
-    
-    return(list(publicContracts, TokenNew))
-    
-    #joinedContractsItems <- sqldf('SELECT csvtable.date, csvtable.transaction_id, csvtable.quantity, "typeName", csvtable.type_id, csvtable.unit_price, csvtable.client_id, "client_name", csvtable.location_id, "stationName", csvtable.is_buy, csvtable.is_personal, csvtable.journal_ref_id FROM csvtable INNER JOIN invTable ON csvtable.type_id="typeID"')
-  }
 
   
   downloadedData <- reactive({
     parseQueryString(session$clientData$url_search)
                      })
   
+  #builCharacterObject
   retrieveData <- function (){
     
     if (!is.null(downloadedData()[['code']])){
       getResponse <- downloadedData()[['code']]
+      invTable <- read.csv2(file=file.path("www", "invTypes.csv"), header=TRUE, sep=",", dec=".", stringsAsFactors=FALSE)
       
       #get token from login auth
       TokenNew <- getTokenNew(getResponse)
@@ -235,17 +106,21 @@ function(input, output, session) {
       refreshcode <- TokenNew$refreshcode
       buildAuthcode <- TokenNew$buildAuthcode
       
-      csvtable <- rbindlist(WalletTransactions, fill=T)
+      if (WalletTransactions != 'no transactions') {
+        csvtable <- rbindlist(WalletTransactions, fill=T)
+        joinedCSVtables <- sqldf('SELECT csvtable.date, csvtable.transaction_id, csvtable.quantity, "typeName", csvtable.type_id, csvtable.unit_price, csvtable.client_id, "client_name", csvtable.location_id, "stationName", csvtable.is_buy, csvtable.is_personal, csvtable.journal_ref_id FROM csvtable INNER JOIN invTable ON csvtable.type_id="typeID"')
+        oldFormatDL <- rewriteSellBuyEntries(joinedCSVtables)
+        oldFormatDL$date <- gsub("T", " ", oldFormatDL$date)
+        oldFormatDL$date <- gsub("Z", "", oldFormatDL$date)
+      } else {
+        joinedCSVtables <- read.csv2(file=file.path("www", "noTransactionData.csv"), header=TRUE, sep=";", dec=".", stringsAsFactors=FALSE)
+        oldFormatDL <- joinedCSVtables
+        csvtable <- ''
+      }
       
       contractscsvtable <- rbindlist(Contracts, fill=T)
       publicContracts <- extractPublicContracts(contractscsvtable)
       
-      invTable <- read.csv2(file=file.path("www", "invTypes.csv"), header=TRUE, sep=",", dec=".", stringsAsFactors=FALSE)
-      
-      joinedCSVtables <- sqldf('SELECT csvtable.date, csvtable.transaction_id, csvtable.quantity, "typeName", csvtable.type_id, csvtable.unit_price, csvtable.client_id, "client_name", csvtable.location_id, "stationName", csvtable.is_buy, csvtable.is_personal, csvtable.journal_ref_id FROM csvtable INNER JOIN invTable ON csvtable.type_id="typeID"')
-      oldFormatDL <- rewriteSellBuyEntries(joinedCSVtables)
-      oldFormatDL$date <- gsub("T", " ", oldFormatDL$date)
-      oldFormatDL$date <- gsub("Z", "", oldFormatDL$date)
       
       if (nrow(publicContracts) != 0) {
         getItems <- resolveContractItems(TokenNew, CharacterID, publicContracts)

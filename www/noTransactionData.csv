@@ -1,0 +1,3 @@
+;date;transaction_id;quantity;typeName;type_id;unit_price;client_id;location_id;is_buy;is_personal;journal_ref_id
+1;2018-02-24T18:29:19Z;4819302742;2;No Transactions;40520;815000000;96355827;1.02316E+12;FALSE;TRUE;15227070141
+3;2018-02-24T13:49:54Z;4819087486;1;Filler Data;4391;126004.28;2112527205;60003760;TRUE;TRUE;15225983363
